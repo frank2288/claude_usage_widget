@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Claude Usage</title>
+  <style>
+    :root {
+      --bg: rgba(24, 24, 27, 0.84);
+      --fg: #f4f4f5;
+      --muted: #a1a1aa;
+      --track: rgba(255, 255, 255, 0.09);
+      --ok: #d97757;
+      --warn: #e9b44c;
+      --danger: #ef5350;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    html, body {
+      height: 100%;
+      background: transparent;
+      overflow: hidden;
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", sans-serif;
+    }
+    .card {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 16px 9px;
+      border-radius: 20px;
+      background: var(--bg);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+      cursor: grab;
+    }
+    .card:active { cursor: grabbing; }
+    .rings { flex: 1; display: flex; justify-content: space-around; align-items: center; }
+    .ring { --c: var(--ok); display: flex; flex-direction: column; align-items: center; gap: 5px; width: 108px; }
+    .ring.warn { --c: var(--warn); }
+    .ring.danger { --c: var(--danger); }
+    .ring.empty { --c: var(--track); }
+    .gauge { position: relative; width: 84px; height: 84px; }
+    .gauge svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    circle { fill: none; stroke-width: 8; }
+    .track { stroke: var(--track); }
+    .bar {
+      stroke: var(--c);
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), stroke 0.3s;
+    }
+    .pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+    .num { font-size: 22px; font-weight: 650; letter-spacing: -0.02em; }
+    .sym { font-size: 11px; color: var(--muted); margin: 5px 0 0 1px; }
+    .label { font-size: 12px; font-weight: 600; }
+    .reset { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    /* ---- Modalità compatta: solo anelli, nessuno sfondo ---- */
+    .mini { display: none; height: 100%; align-items: center; justify-content: center; gap: 8px; padding: 6px; cursor: grab; }
+    .mini:active { cursor: grabbing; }
+    html.compact .card { display: none; }
+    html.compact .mini { display: flex; }
+    html.compact body { background: transparent; }
+    .mg {
+      --c: var(--ok);
+      position: relative; width: 96px; height: 96px;
+      /* Velo invisibile a occhio (4/255 di nero): con alfa più basso Windows considera
+         i pixel vuoti e lascia passare clic e trascinamento al desktop. */
+      background: rgba(0, 0, 0, 0.016); border-radius: 50%;
+    }
+    /* Ombra leggera solo sulle parti piene, per leggerle anche su sfondi chiari.
+       Solo sfocatura (nessuno spostamento): l'anello è ruotato e lo spostamento girerebbe con lui. */
+    .m-bar, .seg-lit { filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.55)); }
+    .mg.warn { --c: var(--warn); }
+    .mg.danger { --c: var(--danger); }
+    .mg svg { width: 100%; height: 100%; }
+    /* Solo un filo sottile al posto della parte non consumata: nessun disco di sfondo */
+    .m-track { fill: none; stroke: rgba(160, 160, 170, 0.22); stroke-width: 1.5; }
+    .m-bar {
+      fill: none; stroke: var(--c); stroke-width: 8; stroke-linecap: round;
+      transition: stroke-dashoffset 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), stroke 0.3s;
+    }
+    .seg-track path { fill: none; stroke: rgba(77, 163, 255, 0.22); stroke-width: 1.5; stroke-linecap: round; }
+    .seg-lit path { fill: none; stroke: #4da3ff; stroke-width: 5; stroke-linecap: round; }
+    .m-pct {
+      position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-variant-numeric: tabular-nums; text-shadow: none; line-height: 1;
+    }
+    .m-row { display: flex; align-items: flex-start; }
+    .m-num { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; color: #000; }
+    .m-sym { font-size: 8px; color: #000; margin: 2px 0 0 1px; }
+    .m-timer { margin-top: 3px; font-size: 8.5px; font-weight: 600; color: #4da3ff; white-space: nowrap; }
+    /* ---- Modalità barre: striscia sottile, anche sopra la barra di Windows ---- */
+    .bars {
+      --bfg: #fff;
+      display: none; height: 100%; flex-direction: column; justify-content: center; gap: 3px;
+      padding: 3px 8px; cursor: grab;
+      /* velo invisibile a occhio: serve solo perché Windows lasci trascinare la striscia */
+      background: rgba(0, 0, 0, 0.016); border-radius: 6px;
+    }
+    .bars:active { cursor: grabbing; }
+    html.tb-light .bars { --bfg: #000; }
+    html.barmode .card, html.barmode .mini { display: none; }
+    html.barmode .bars { display: flex; }
+    html.barmode body { background: transparent; }
+    .brow { --c: var(--ok); display: flex; align-items: center; gap: 5px; height: 15px; color: var(--bfg); }
+    .brow.warn { --c: var(--warn); }
+    .brow.danger { --c: var(--danger); }
+    .blab { width: 15px; font-size: 9.5px; font-weight: 700; opacity: 0.85; }
+    .bwrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .btrack { height: 6px; border-radius: 3px; background: rgba(128, 128, 128, 0.38); overflow: hidden; }
+    .bfill { height: 100%; width: 0; border-radius: 3px; background: var(--c); transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.3s; }
+    .bsegs { display: flex; gap: 2px; height: 2px; }
+    .bseg { flex: 1; border-radius: 1px; background: rgba(77, 163, 255, 0.28); overflow: hidden; }
+    .bseg i { display: block; height: 100%; width: 0; background: #4da3ff; }
+    .bpct { width: 30px; text-align: right; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .btimer { width: 34px; font-size: 9.5px; font-weight: 600; color: #4da3ff; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .foot { height: 14px; text-align: center; font-size: 9.5px; color: var(--muted); opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="rings">
+      <div class="ring empty" id="r-session">
+        <div class="gauge">
+          <svg viewBox="0 0 96 96"><circle class="track" cx="48" cy="48" r="38"/><circle class="bar" cx="48" cy="48" r="38"/></svg>
+          <div class="pct"><span class="num">—</span><span class="sym">%</span></div>
+        </div>
+        <div class="label">Sessione</div>
+        <div class="reset">—</div>
+      </div>
+      <div class="ring empty" id="r-week">
+        <div class="gauge">
+          <svg viewBox="0 0 96 96"><circle class="track" cx="48" cy="48" r="38"/><circle class="bar" cx="48" cy="48" r="38"/></svg>
+          <div class="pct"><span class="num">—</span><span class="sym">%</span></div>
+        </div>
+        <div class="label">Settimana</div>
+        <div class="reset">—</div>
+      </div>
+    </div>
+    <div class="foot" id="foot"></div>
+  </div>
+  <div class="mini" id="mini">
+    <div class="mg" id="m-session">
+      <svg viewBox="0 0 96 96" aria-hidden="true">
+        <circle class="m-track" cx="48" cy="48" r="40"/>
+        <circle class="m-bar" cx="48" cy="48" r="40" transform="rotate(-90 48 48)"/>
+        <g class="seg-track"></g><g class="seg-lit"></g>
+      </svg>
+      <div class="m-pct"><div class="m-row"><span class="m-num">—</span><span class="m-sym">%</span></div><div class="m-timer"></div></div>
+    </div>
+    <div class="mg" id="m-week">
+      <svg viewBox="0 0 96 96" aria-hidden="true">
+        <circle class="m-track" cx="48" cy="48" r="40"/>
+        <circle class="m-bar" cx="48" cy="48" r="40" transform="rotate(-90 48 48)"/>
+        <g class="seg-track"></g><g class="seg-lit"></g>
+      </svg>
+      <div class="m-pct"><div class="m-row"><span class="m-num">—</span><span class="m-sym">%</span></div><div class="m-timer"></div></div>
+    </div>
+  </div>
+  <div class="bars" id="bars">
+    <div class="brow" id="b-session">
+      <span class="blab">5h</span>
+      <div class="bwrap"><div class="btrack"><div class="bfill"></div></div><div class="bsegs"><span class="bseg"><i></i></span><span class="bseg"><i></i></span><span class="bseg"><i></i></span><span class="bseg"><i></i></span><span class="bseg"><i></i></span></div></div>
+      <span class="bpct">—</span>
+      <span class="btimer"></span>
+    </div>
+    <div class="brow" id="b-week">
+      <span class="blab">7g</span>
+      <div class="bwrap"><div class="btrack"><div class="bfill"></div></div><div class="bsegs"><span class="bseg"><i></i></span><span class="bseg"><i></i></span><span class="bseg"><i></i></span><span class="bseg"><i></i></span><span class="bseg"><i></i></span><span class="bseg"><i></i></span><span class="bseg"><i></i></span></div></div>
+      <span class="bpct">—</span>
+      <span class="btimer"></span>
+    </div>
+  </div>
+  <script src="renderer.js"></script>
+</body>
+</html>

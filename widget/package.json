@@ -1,0 +1,20 @@
+{
+  "name": "claude-usage-widget",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Widget non ufficiale per Windows: consumo di sessione (5 ore) e settimanale di Claude in sovraimpressione",
+  "author": "frank2288",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/frank2288/claude_usage_widget.git"
+  },
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "demo": "electron . --demo"
+  },
+  "devDependencies": {
+    "electron": "45.2.3"
+  }
+}
