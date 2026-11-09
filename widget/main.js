@@ -9,28 +9,29 @@ const DATA_FILE =
   process.env.CLAUDE_USAGE_FILE || path.join(os.homedir(), '.claude', 'usage-widget.json');
 const SETTINGS_FILE = path.join(app.getPath('userData'), 'settings.json');
 
-// Stili del widget sul desktop e dimensioni della finestra:
-//   rings    = solo anelli
-//   mini     = barre lineari sottili, da mettere anche sopra la barra di Windows
-//   standard = riquadro con sfondo
+// Desktop styles and window sizes:
+//   rings    = rings only
+//   mini     = thin linear bars, can also sit on top of the Windows taskbar
+//   standard = panel with background
 const SIZES = {
   standard: { w: 264, h: 172 },
   rings: { w: 212, h: 108 },
   mini: { w: 184, h: 40 },
 };
 const STYLES = ['rings', 'mini', 'standard'];
-const STYLE_LABELS = { rings: 'Anelli', mini: 'Barre (mini, anche sopra la barra di Windows)', standard: 'Riquadro' };
+const STYLE_LABELS = { rings: 'Rings', mini: 'Bars (mini, can sit on the taskbar)', standard: 'Panel' };
 const MARGIN = 24;
 
 let win = null;
-// "rings" all'inizio; modeChosen diventa true quando scegli tu uno stile,
-// da quel momento la tua scelta viene sempre rispettata.
-// tray = icone nell'area di notifica vicino all'orologio, widget nascosto.
+// "rings" at first; modeChosen becomes true once you pick a style yourself,
+// and from then on your choice is always kept.
+// tray = icons in the notification area next to the clock, widget hidden.
 let settings = { x: null, y: null, opacity: 1, alwaysOnTop: true, style: 'rings', modeChosen: false, tray: false };
 
 const currentSize = () => SIZES[settings.style] || SIZES.rings;
-// Tema della barra di Windows (può essere diverso da quello delle app):
-// serve per scegliere numeri neri su barra chiara e bianchi su barra scura.
+
+// Theme of the Windows taskbar (it can differ from the apps theme):
+// used to draw black text on a light taskbar and white text on a dark one.
 function taskbarIsLight() {
   if (process.platform === 'win32') {
     try {
@@ -38,7 +39,7 @@ function taskbarIsLight() {
       const m = out.match(/SystemUsesLightTheme\s+REG_DWORD\s+0x([0-9a-f]+)/i);
       if (m) return parseInt(m[1], 16) === 1;
     } catch (_) {
-      /* chiave assente: Windows usa la barra scura */
+      /* key missing: Windows uses a dark taskbar */
     }
     return false;
   }
@@ -58,27 +59,27 @@ let lastPayload = '';
 let dragTimer = null;
 const trays = { five_hour: null, seven_day: null };
 
-// ---- Modalità barra di Windows ----
+// ---- Icons next to the clock ----
 function destroyTrays() {
   for (const k of Object.keys(trays)) {
     if (trays[k]) {
       try {
         trays[k].destroy();
       } catch (_) {
-        /* già distrutta */
+        /* already destroyed */
       }
       trays[k] = null;
     }
   }
 }
 
-// ---- Aggiornamento manuale ("Aggiorna ora") ----
-// Stessa richiesta minima dell'aggiornamento automatico (aggiorna.js, solo Haiku).
+// ---- Manual refresh ("Refresh now") ----
+// Same minimal request as the automatic refresh (refresh.js, Haiku only).
 let refreshing = false;
 
 function refreshItem() {
   return {
-    label: refreshing ? 'Aggiornamento in corso…' : 'Aggiorna ora',
+    label: refreshing ? 'Refreshing…' : 'Refresh now',
     enabled: !refreshing && !DEMO,
     click: refreshNow,
   };
@@ -94,7 +95,7 @@ async function refreshNow(opts = {}) {
   updateTrayMenus();
   let res;
   try {
-    res = await require('./aggiorna.js').refresh();
+    res = await require('./refresh.js').refresh();
   } catch (e) {
     res = { ok: false, reason: e.message };
   }
@@ -103,7 +104,7 @@ async function refreshNow(opts = {}) {
   lastPayload = '';
   pushData();
   if (!res.ok && !opts.silent && Notification.isSupported()) {
-    new Notification({ title: 'Aggiornamento non riuscito', body: String(res.reason || '').slice(0, 200) }).show();
+    new Notification({ title: 'Refresh failed', body: String(res.reason || '').slice(0, 200) }).show();
   }
 }
 
@@ -130,11 +131,11 @@ function trayMenu() {
     refreshItem(),
     { type: 'separator' },
     ...STYLES.map((st) => ({
-      label: `Mostra sul desktop: ${STYLE_LABELS[st].split(' (')[0].toLowerCase()}`,
+      label: `Show on desktop: ${STYLE_LABELS[st].split(' (')[0].toLowerCase()}`,
       click: () => { setTray(false); setStyle(st); },
     })),
     { type: 'separator' },
-    { label: 'Esci', click: () => app.quit() },
+    { label: 'Quit', click: () => app.quit() },
   ]);
 }
 
@@ -154,8 +155,8 @@ function setTray(on) {
   saveSettings();
 }
 
-// Il renderer disegna le icone (in tre dimensioni, per i vari zoom dello schermo)
-// e le manda qui; ogni icona è un anellino con la percentuale al centro.
+// The renderer draws the icons (in three sizes, for the various display scales)
+// and sends them here; each icon is a small ring with the percentage in the middle.
 ipcMain.on('tray-icons', (_e, payload) => {
   if (!settings.tray || !payload) return;
   for (const key of ['five_hour', 'seven_day']) {
@@ -183,9 +184,9 @@ function loadSettings() {
     raw = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) || {};
     settings = { ...settings, ...raw };
   } catch (_) {
-    /* prima esecuzione */
+    /* first run */
   }
-  // Impostazioni delle versioni precedenti: "compact" vero/falso diventa uno stile.
+  // Settings from older versions: "compact" true/false becomes a style.
   if (!STYLES.includes(raw.style)) settings.style = raw.compact === false ? 'standard' : 'rings';
   delete settings.compact;
   if (!settings.modeChosen) settings.style = 'rings';
@@ -196,7 +197,7 @@ function saveSettings() {
     fs.mkdirSync(path.dirname(SETTINGS_FILE), { recursive: true });
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings));
   } catch (_) {
-    /* non critico */
+    /* not critical */
   }
 }
 
@@ -205,8 +206,8 @@ function defaultPosition() {
   return { x: wa.x + wa.width - currentSize().w - MARGIN, y: wa.y + MARGIN };
 }
 
-// Si usa l'intero schermo (bounds), non l'area di lavoro: così il widget può
-// stare anche sopra la barra di Windows e ritrovarsi lì al riavvio.
+// Uses the whole screen (bounds), not the work area, so the widget can sit
+// on top of the Windows taskbar and be found there again after a restart.
 function positionIsVisible(x, y) {
   const { w, h } = currentSize();
   return screen.getAllDisplays().some((d) => {
@@ -215,7 +216,7 @@ function positionIsVisible(x, y) {
   });
 }
 
-// Cambia stile mantenendo l'angolo in alto a sinistra e tenendo la finestra nello schermo.
+// Changes style keeping the top-left corner and the window on screen.
 function setStyle(style) {
   if (!STYLES.includes(style)) return;
   settings.style = style;
@@ -306,7 +307,7 @@ function createWindow() {
   win.loadFile('index.html');
   win.webContents.on('did-finish-load', () => {
     lastPayload = '';
-      win.webContents.send('mode', modePayload());
+    win.webContents.send('mode', modePayload());
     pushData();
   });
 }
@@ -338,7 +339,7 @@ function showMenu() {
     refreshItem(),
     { type: 'separator' },
     {
-      label: 'Sempre in primo piano',
+      label: 'Always on top',
       type: 'checkbox',
       checked: settings.alwaysOnTop,
       click: (item) => {
@@ -348,7 +349,7 @@ function showMenu() {
       },
     },
     {
-      label: 'Stile',
+      label: 'Style',
       submenu: STYLES.map((st) => ({
         label: STYLE_LABELS[st],
         type: 'radio',
@@ -357,15 +358,15 @@ function showMenu() {
       })),
     },
     {
-      label: 'Icone vicino all\'orologio (nasconde il widget)',
+      label: 'Icons next to the clock (hides the widget)',
       click: () => setTray(true),
     },
     {
-      label: 'Opacità',
+      label: 'Opacity',
       submenu: [opacityItem('100%', 1), opacityItem('85%', 0.85), opacityItem('70%', 0.7), opacityItem('50%', 0.5)],
     },
     {
-      label: 'Riporta in alto a destra',
+      label: 'Move to top right',
       click: () => {
         const p = defaultPosition();
         const { w, h } = currentSize();
@@ -375,16 +376,15 @@ function showMenu() {
         saveSettings();
       },
     },
-    { label: 'Mostra file dei dati', enabled: !DEMO, click: () => shell.showItemInFolder(DATA_FILE) },
+    { label: 'Show data file', enabled: !DEMO, click: () => shell.showItemInFolder(DATA_FILE) },
     { type: 'separator' },
-    { label: 'Esci', click: () => app.quit() },
+    { label: 'Quit', click: () => app.quit() },
   ]);
   menu.popup({ window: win });
 }
 
-// Trascinamento gestito dal main process: coerente con la scala DPI e
-// compatibile con il menu contestuale (le regioni "drag" di Electron su
-// Windows lo bloccherebbero).
+// Dragging is handled by the main process: consistent with DPI scaling and
+// compatible with the context menu (Electron "drag" regions would block it on Windows).
 ipcMain.on('drag-start', () => {
   if (!win) return;
   clearInterval(dragTimer);
@@ -408,7 +408,7 @@ ipcMain.on('drag-end', () => {
 });
 
 ipcMain.on('show-menu', showMenu);
-// Doppio clic: anelli -> barre -> riquadro -> anelli
+// Double-click: rings -> bars -> panel -> rings
 ipcMain.on('toggle-compact', () => setStyle(STYLES[(STYLES.indexOf(settings.style) + 1) % STYLES.length]));
 ipcMain.handle('get-data', () => readData());
 ipcMain.handle('get-mode', () => modePayload());
@@ -427,12 +427,12 @@ if (!gotLock) {
     if (process.platform === 'darwin' && app.dock) app.dock.hide();
     createWindow();
     setInterval(pushData, 3000);
-    // Controllo del reset: appena una finestra scade, chiede subito il consumo nuovo
-    // (al massimo una volta ogni 5 minuti, senza notifiche se non riesce).
+    // Reset check: as soon as a window expires, ask for fresh usage right away
+    // (at most once every 5 minutes, no notification if it fails).
     setTimeout(checkExpired, 5000);
     setInterval(checkExpired, 60 * 1000);
-    // Sopra la barra di Windows: cliccando la barra, Windows la riporta davanti;
-    // ogni 2 secondi rimettiamo il widget in primo piano (senza rubare il focus).
+    // On top of the Windows taskbar: clicking the taskbar brings it to the front;
+    // every 2 seconds the widget is put back on top (without stealing focus).
     setInterval(() => {
       if (win && !win.isDestroyed() && win.isVisible() && settings.alwaysOnTop && settings.style === 'mini') {
         win.setAlwaysOnTop(true, 'screen-saver');

@@ -1,108 +1,106 @@
 # Claude Usage Widget
 
-Widget **non ufficiale** per Windows che mostra in sovraimpressione quanto hai consumato dei limiti del tuo abbonamento Claude: la **sessione** (finestra di 5 ore) e la **settimana**, con il tempo che manca a ogni reset.
+An **unofficial** Windows overlay that shows how much of your Claude plan you have used: the **session** limit (5‑hour window) and the **weekly** limit, with the time left until each one resets.
 
-> *English: an unofficial Windows overlay that shows your Claude plan usage (5‑hour session and weekly limits) with time to reset. Download the ZIP, run `INSTALLA.cmd`, done. UI and docs are in Italian.*
-
-| Anelli | Barre (anche sopra la barra di Windows) | Riquadro |
+| Rings | Bars (can sit on the taskbar) | Panel |
 |:---:|:---:|:---:|
-| <img src="docs/anelli.png" width="212" alt="Stile anelli"> | <img src="docs/barre-scura.png" width="184" alt="Stile barre su barra scura"><br><img src="docs/barre-chiara.png" width="184" alt="Stile barre su barra chiara"> | <img src="docs/riquadro.png" width="264" alt="Stile riquadro"> |
+| <img src="docs/rings.png" width="212" alt="Rings style"> | <img src="docs/bars-dark.png" width="184" alt="Bars style on a dark taskbar"><br><img src="docs/bars-light.png" width="184" alt="Bars style on a light taskbar"> | <img src="docs/panel.png" width="264" alt="Panel style"> |
 
-Oppure come **icone vicino all'orologio**:
+Or as **icons next to the clock**:
 
-<img src="docs/icone-orologio.png" width="300" alt="Icone nell'area di notifica">
+<img src="docs/tray-icons.png" width="300" alt="Icons in the notification area">
 
-## Cosa fa
+## Features
 
-- Mostra le percentuali di consumo **di sessione e settimanali**, le stesse di *Impostazioni → Utilizzo* su claude.ai, con colori che passano ad ambra sopra il 75% e a rosso sopra il 90%.
-- Mostra il **tempo al reset**, sia scritto ("2h 12m") sia come segmenti blu: 5 da un'ora per la sessione, 7 da un giorno per la settimana.
-- **Quattro stili**: anelli, barre sottili da mettere sopra la barra di Windows, riquadro, icone vicino all'orologio.
-- Si **aggiorna da solo ogni 15 minuti**, anche se usi Claude solo da browser o dall'app, e subito dopo ogni reset.
-- **Parte da solo** all'accensione del PC.
+- **Session and weekly usage**: the same percentages you see in *Settings → Usage* on claude.ai. Colours switch to amber above 75% and to red above 90%.
+- **Time to reset**, both as text ("2h 12m") and as blue segments: 5 one-hour segments for the session, 7 one-day segments for the week.
+- **Four styles**: rings, thin bars you can place on top of the Windows taskbar, a panel, or icons next to the clock.
+- **Refreshes by itself every 15 minutes**, even if you only use Claude in the browser or the desktop app, and right after every reset.
+- **Starts automatically** when you sign in to Windows.
 
-## Requisiti
+## Requirements
 
-- Windows 10 o 11.
-- Un abbonamento **Claude Pro o Max**: le percentuali esistono solo per questi piani.
-- Node.js e Claude Code: se mancano **li installa l'installatore**.
+- Windows 10 or 11.
+- A **Claude Pro or Max** plan: the usage percentages only exist for these plans.
+- Node.js and Claude Code: **the installer installs them** if they are missing.
 
-## Installazione
+## Install
 
-1. In questa pagina clicca **Code → Download ZIP**.
-2. Estrai lo zip (tasto destro → *Estrai tutto…*).
-3. Fai doppio clic su **`INSTALLA.cmd`**.
-   Se compare *"Windows ha protetto il PC"*: **Ulteriori informazioni → Esegui comunque**.
-4. Segui la finestra. Fa tutto da sola:
-   - installa Node.js e Claude Code se mancano
-   - copia il widget in `%LOCALAPPDATA%\ClaudeUsageWidget`
-   - ti fa accedere al tuo account Claude nel browser
-   - attiva avvio automatico e aggiornamento ogni 15 minuti
-   - avvia il widget
+1. On this page click **Code → Download ZIP**.
+2. Extract the zip (right-click → *Extract All…*).
+3. Double-click **`INSTALL.cmd`**.
+   If you see *"Windows protected your PC"*: **More info → Run anyway**.
+4. Follow the window. It does everything on its own:
+   - installs Node.js and Claude Code if they are missing
+   - copies the widget to `%LOCALAPPDATA%\ClaudeUsageWidget`
+   - opens your browser to sign in to your Claude account
+   - turns on autostart and a refresh every 15 minutes
+   - starts the widget
 
-**Aggiornare:** scarica di nuovo lo ZIP e rilancia `INSTALLA.cmd`. Le tue impostazioni restano. Se trova una versione installata altrove, la sostituisce e ti chiede se cancellare la vecchia cartella.
+**Update:** download the ZIP again and run `INSTALL.cmd` again. Your settings are kept. If an earlier version is installed somewhere else, it is replaced, and you are asked whether to delete the old folder.
 
-**Disinstallare:** doppio clic su `DISINSTALLA.cmd`. Toglie widget, avvio automatico e aggiornamento; Node.js e Claude Code restano.
+**Uninstall:** double-click `UNINSTALL.cmd`. It removes the widget, autostart and the periodic refresh; Node.js and Claude Code stay installed.
 
-## Uso
+## Usage
 
-| Azione | Cosa fa |
+| Action | What it does |
 |---|---|
-| Trascina con il tasto sinistro | Sposta il widget (lo stile *Barre* si può mettere sopra la barra di Windows) |
-| Doppio clic | Cambia stile: anelli → barre → riquadro |
-| Tasto destro → **Aggiorna ora** | Chiede subito il consumo attuale |
-| Tasto destro → **Stile** | Anelli, Barre, Riquadro |
-| Tasto destro → **Icone vicino all'orologio** | Nasconde il widget e mostra due icone; cliccandole torni sul desktop |
-| Tasto destro → Opacità, Sempre in primo piano, Esci | — |
+| Drag with the left button | Moves the widget (the *Bars* style can sit on top of the Windows taskbar) |
+| Double-click | Switches style: rings → bars → panel |
+| Right-click → **Refresh now** | Asks for your current usage right away |
+| Right-click → **Style** | Rings, Bars, Panel |
+| Right-click → **Icons next to the clock** | Hides the widget and shows two icons; click them to bring the widget back |
+| Right-click → Opacity, Always on top, Quit | — |
 
-Passando il mouse su un anello, una barra o un'icona compare il dettaglio, per esempio *"Sessione: 62% usato · reset tra 2h 12m"*.
+Hover over a ring, a bar or an icon to see the details, e.g. *"Session: 62% used · resets in 2h 12m"*.
 
-Su Windows 11 le icone nuove finiscono nel menu nascosto (freccia **^**): trascinale sulla barra per averle sempre visibili.
+On Windows 11 new icons go into the hidden menu (the **^** arrow): drag them onto the taskbar to keep them visible.
 
-## Come funziona
-
-```
-Attività pianificata (ogni 15 min)  ─┐
-"Aggiorna ora" / reset rilevato     ─┼─►  aggiorna.js  ─►  claude -p "ok" --model haiku --tools ""
-                                     │                         │
-                                     │                         ▼
-                                     │        evento rate_limit_event (utilization, resetsAt)
-                                     │                         │
-                                     │                         ▼
-                                     └──────────►  ~/.claude/usage-widget.json  ◄── widget (Electron)
-```
-
-- `aggiorna.js` fa una **richiesta minima** a Claude Code in modalità non interattiva (modello Haiku, nessuno strumento) e legge le percentuali dall'evento `rate_limit_event` che Claude Code emette a ogni risposta.
-- Le percentuali sono quelle **dell'account**, quindi comprendono anche l'uso da claude.ai e dall'app.
-- Il widget legge il file ogni 3 secondi. Se una finestra risulta scaduta, chiede subito il dato nuovo.
-- Facoltativo: chi usa Claude Code può collegare anche la sua barra di stato con `node widget/setup.js`, così il widget si aggiorna dopo ogni risposta.
-
-## Da sapere
-
-- **Ogni aggiornamento è una vera richiesta a Claude**: piccola (Haiku, circa 14.000 token quasi tutti in cache), ma conta nei limiti del piano. Con un aggiornamento ogni 15 minuti sono circa 96 richieste al giorno con il PC acceso. Per cambiare intervallo: `node automazione.js installa 30` dalla cartella di installazione (da 10 a 240 minuti).
-- Una richiesta **fa partire la finestra di 5 ore** anche quando non stai lavorando.
-- Se nell'ambiente c'è una chiave API (`ANTHROPIC_API_KEY`), il widget la ignora per non fatturare a consumo.
-- L'evento `rate_limit_event` **non è documentato ufficialmente**: se Anthropic lo cambia, gli anelli smettono di aggiornarsi. `node aggiorna.js --prova` dice cosa succede.
-- Windows 11 non permette più di inserire contenuti dentro la barra delle applicazioni: lo stile *Barre* ci si appoggia sopra come finestra in primo piano, le *Icone* stanno nell'area di notifica.
-- Nessun dato viene inviato altrove: l'unica connessione è la richiesta a Claude, con il tuo account.
-
-## Struttura della repo
+## How it works
 
 ```
-INSTALLA.cmd / installa.ps1        installatore (doppio clic)
-DISINSTALLA.cmd / disinstalla.ps1  disinstallazione
+Scheduled task (every 15 min)  ─┐
+"Refresh now" / reset detected ─┼─►  refresh.js  ─►  claude -p "ok" --model haiku --tools ""
+                                │                        │
+                                │                        ▼
+                                │       rate_limit_event (utilization, resetsAt)
+                                │                        │
+                                │                        ▼
+                                └──────►  ~/.claude/usage-widget.json  ◄── widget (Electron)
+```
+
+- `refresh.js` makes a **minimal request** to Claude Code in non-interactive mode (Haiku model, no tools) and reads the percentages from the `rate_limit_event` that Claude Code emits with every response.
+- The percentages belong to your **account**, so they include usage from claude.ai and the apps too.
+- The widget reads the file every 3 seconds. If a window has expired, it asks for fresh data right away.
+- Optional: if you use Claude Code, you can also hook in its status line with `node statusline-setup.js` (from the install folder), so the widget refreshes after every Claude Code response.
+
+## Good to know
+
+- **Every refresh is a real request to Claude**: small (Haiku, about 14,000 tokens, mostly cached), but it counts towards your plan limits. With a refresh every 15 minutes that is about 96 requests a day while the PC is on. To change the interval, run `node automation.js install 30` from the install folder (10 to 240 minutes).
+- A request **starts the 5‑hour window** even when you are not working.
+- If an API key is set in your environment (`ANTHROPIC_API_KEY`), the widget ignores it so you are never billed per token.
+- `rate_limit_event` is **not officially documented**: if Anthropic changes it, the widget stops updating. `node refresh.js --test` tells you what is happening.
+- Windows 11 no longer lets apps put content inside the taskbar: the *Bars* style sits on top of it as an always-on-top window, and the *Icons* live in the notification area.
+- No data is sent anywhere else: the only connection is the request to Claude, with your own account.
+
+## Repository layout
+
+```
+INSTALL.cmd / install.ps1        installer (double-click)
+UNINSTALL.cmd / uninstall.ps1    uninstaller
 widget/
-  main.js, preload.js, renderer.js, index.html   il widget (Electron)
-  aggiorna.js       lettura delle percentuali da Claude Code
-  automazione.js    avvio automatico + attività pianificata di Windows
-  migra.js          passaggio da una versione installata altrove
-  setup.js, statusline-writer.js   integrazione facoltativa con la barra di stato di Claude Code
-docs/                              screenshot
+  main.js, preload.js, renderer.js, index.html   the widget (Electron)
+  refresh.js          reads the usage from Claude Code
+  automation.js       Windows autostart + scheduled task
+  migrate.js          moves an earlier install from another folder
+  statusline-setup.js, statusline-writer.js   optional Claude Code status line hook
+docs/                            screenshots
 ```
 
-Per provarlo senza installare: `cd widget && npm install && npm run demo`.
+To try it without installing: `cd widget && npm install && npm run demo`.
 
-## Licenza e avvertenze
+## License and disclaimer
 
-Distribuito con licenza [MIT](LICENSE).
+Released under the [MIT license](LICENSE).
 
-Progetto indipendente, **non affiliato né approvato da Anthropic**. "Claude" è un marchio di Anthropic, PBC.
+Independent project, **not affiliated with or endorsed by Anthropic**. "Claude" is a trademark of Anthropic, PBC.

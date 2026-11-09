@@ -1,5 +1,5 @@
-# Gli script di Windows restano esattamente come sono (fine riga CRLF e BOM),
-# anche quando si scarica la repo con "Download ZIP".
+# Windows scripts are kept exactly as they are (CRLF line endings and BOM),
+# also when the repo is downloaded with "Download ZIP".
 *.cmd -text
 *.ps1 -text
 *.png binary

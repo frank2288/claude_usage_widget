@@ -4,6 +4,6 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-# file creati sul PC dall'installazione
+# files created on the PC by the installer
 widget/statusline-wrap.txt
-widget/aggiorna-nascosto.vbs
+widget/refresh-hidden.vbs

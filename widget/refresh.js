@@ -1,17 +1,17 @@
 #!/usr/bin/env node
-// Aggiornatore silenzioso dei dati di utilizzo.
+// Silent usage refresher.
 //
-// Fa UNA chiamata minima a Claude Code in modalità automatica (claude -p) e
-// legge le percentuali di sessione e settimana dall'evento "rate_limit_event",
-// che Claude Code emette a ogni risposta. Le salva nello stesso file che
-// legge il widget (~/.claude/usage-widget.json).
+// Makes ONE minimal call to Claude Code in non-interactive mode (claude -p) and
+// reads the session and weekly percentages from the "rate_limit_event" that
+// Claude Code emits with every response. Saves them to the same file the
+// widget reads (~/.claude/usage-widget.json).
 //
-// Le percentuali sono quelle dell'account, quindi includono anche l'uso da
-// claude.ai e dall'app. Ogni chiamata consuma pochissimo (modello Haiku,
-// niente strumenti).
+// The percentages belong to the account, so they include usage from
+// claude.ai and the apps too. Each call costs very little (Haiku model,
+// no tools).
 //
-//   node aggiorna.js           una passata, silenziosa
-//   node aggiorna.js --prova   una passata con spiegazione di cosa succede
+//   node refresh.js          one silent pass
+//   node refresh.js --test   one pass explaining what happens
 
 const fs = require('fs');
 const os = require('os');
@@ -22,7 +22,7 @@ const DATA = process.env.CLAUDE_USAGE_FILE || path.join(os.homedir(), '.claude',
 const LOG = path.join(path.dirname(DATA), 'usage-widget-refresh.log');
 const WORKDIR = path.join(os.tmpdir(), 'claude-usage-widget-refresh');
 const TIMEOUT_MS = 90000;
-const VERBOSE = process.argv.includes('--prova');
+const VERBOSE = process.argv.includes('--test') || process.argv.includes('--prova');
 
 const say = (s = '') => {
   if (VERBOSE) console.log(s);
@@ -35,8 +35,8 @@ function claudeBinary() {
   return fs.existsSync(p) ? p : 'claude';
 }
 
-// utilization è una frazione da 0 a 1 (0.24 = 24%): Claude Code stesso la
-// converte con round(x * 1000) / 10 per la sua barra di stato.
+// utilization is a fraction from 0 to 1 (0.24 = 24%): Claude Code itself
+// converts it with round(x * 1000) / 10 for its status line.
 function convertWindow(w) {
   if (!w || !Number.isFinite(w.utilization) || !Number.isFinite(w.resetsAt)) return null;
   return {
@@ -68,16 +68,17 @@ function parseOutput(text) {
   return { windows, result };
 }
 
-// Usa SEMPRE e solo il modello più leggero (Haiku): nessun ripiego su modelli più pesanti.
+// ALWAYS and only the lightest model (Haiku): no fallback to heavier models.
 function runClaude() {
   return new Promise((resolve) => {
     try {
       fs.mkdirSync(WORKDIR, { recursive: true });
     } catch (_) {
-      /* proseguiamo comunque */
+      /* carry on anyway */
     }
-    const args = ['-p', 'ok', '--model', 'haiku'];
-    args.push(
+    const args = [
+      '-p', 'ok',
+      '--model', 'haiku',
       '--tools', '',
       '--disable-slash-commands',
       '--strict-mcp-config',
@@ -85,11 +86,11 @@ function runClaude() {
       '--max-turns', '1',
       '--system-prompt', 'ok',
       '--output-format', 'stream-json',
-      '--verbose'
-    );
+      '--verbose',
+    ];
 
-    // Se nell'ambiente c'è una chiave API, Claude Code la userebbe fatturando a
-    // consumo: la togliamo, così si usa solo l'accesso con l'account.
+    // If an API key is set in the environment, Claude Code would use it and bill
+    // per token: remove it, so only the account login is used.
     const env = { ...process.env };
     delete env.ANTHROPIC_API_KEY;
     delete env.ANTHROPIC_AUTH_TOKEN;
@@ -108,15 +109,15 @@ function runClaude() {
     try {
       child = spawn(claudeBinary(), args, { cwd: WORKDIR, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     } catch (e) {
-      return finish({ error: `impossibile avviare Claude Code: ${e.message}` });
+      return finish({ error: `cannot start Claude Code: ${e.message}` });
     }
     const timer = setTimeout(() => {
       try {
         child.kill();
       } catch (_) {
-        /* già terminato */
+        /* already gone */
       }
-      finish({ error: 'Claude Code non ha risposto entro 90 secondi' });
+      finish({ error: 'Claude Code did not answer within 90 seconds' });
     }, TIMEOUT_MS);
 
     child.stdout.on('data', (c) => (out += c));
@@ -125,16 +126,16 @@ function runClaude() {
       finish({
         error:
           e.code === 'ENOENT'
-            ? 'comando "claude" non trovato (installa Claude Code oppure imposta CLAUDE_BIN)'
-            : `errore di avvio: ${e.message}`,
+            ? '"claude" command not found (install Claude Code or set CLAUDE_BIN)'
+            : `startup error: ${e.message}`,
       })
     );
     child.on('close', (code) => finish({ out, err, code }));
   });
 }
 
-// Un dato vecchio si tiene solo se la sua finestra non è ancora scaduta:
-// dopo il reset non deve restare in giro un valore che non vale più.
+// An old value is kept only while its window has not expired yet:
+// after a reset a stale value must not linger.
 function stillValid(w) {
   if (!w || typeof w.resets_at !== 'number') return null;
   const ms = w.resets_at > 1e12 ? w.resets_at : w.resets_at * 1000;
@@ -146,7 +147,7 @@ function saveData(windows) {
   try {
     previous = JSON.parse(fs.readFileSync(DATA, 'utf8'));
   } catch (_) {
-    /* primo salvataggio */
+    /* first save */
   }
   const data = {
     updated: Date.now(),
@@ -166,38 +167,38 @@ function writeLog(line) {
     try {
       lines = fs.readFileSync(LOG, 'utf8').split(/\r?\n/).filter(Boolean);
     } catch (_) {
-      /* primo log */
+      /* first entry */
     }
     lines.push(`${new Date().toISOString()} ${line}`);
     fs.mkdirSync(path.dirname(LOG), { recursive: true });
     fs.writeFileSync(LOG, lines.slice(-30).join('\n') + '\n');
   } catch (_) {
-    /* non critico */
+    /* not critical */
   }
 }
 
 async function refresh() {
-  say(`Eseguo Claude Code (${claudeBinary()}) con una richiesta minima...`);
+  say(`Running Claude Code (${claudeBinary()}) with a minimal request...`);
   const attempt = await runClaude();
   const parsed = attempt.out ? parseOutput(attempt.out) : { windows: null, result: null };
 
   if (attempt.error) {
-    writeLog(`ERRORE ${attempt.error}`);
+    writeLog(`ERROR ${attempt.error}`);
     return { ok: false, reason: attempt.error };
   }
   if (!parsed.windows) {
-    let reason = 'Claude Code non ha restituito le percentuali';
-    if (parsed.result && parsed.result.isError) reason += ` (risposta: ${parsed.result.text})`;
+    let reason = 'Claude Code did not return the usage percentages';
+    if (parsed.result && parsed.result.isError) reason += ` (response: ${parsed.result.text})`;
     else if (attempt.err && attempt.err.trim()) reason += ` (${attempt.err.trim().split(/\r?\n/)[0].slice(0, 160)})`;
-    reason += '. Succede se non hai fatto l\'accesso con l\'account, se il piano non è Pro/Max o se il modello Haiku non è disponibile.';
-    writeLog(`ERRORE ${reason}`);
+    reason += '. This happens if you are not signed in with your account, your plan is not Pro/Max, or the Haiku model is unavailable.';
+    writeLog(`ERROR ${reason}`);
     return { ok: false, reason };
   }
 
   const data = saveData(parsed.windows);
   const f = data.five_hour && data.five_hour.used_percentage;
   const w = data.seven_day && data.seven_day.used_percentage;
-  writeLog(`OK sessione ${f ?? '-'}% settimana ${w ?? '-'}%`);
+  writeLog(`OK session ${f ?? '-'}% week ${w ?? '-'}%`);
   return { ok: true, data };
 }
 
@@ -209,12 +210,12 @@ if (require.main === module) {
       console.log();
       if (r.ok) {
         const d = r.data;
-        console.log('✓ Fatto. Percentuali lette dall\'account:');
-        console.log(`  sessione:  ${d.five_hour ? d.five_hour.used_percentage + '%' : '—'}`);
-        console.log(`  settimana: ${d.seven_day ? d.seven_day.used_percentage + '%' : '—'}`);
-        console.log(`  salvate in ${DATA}`);
+        console.log('✓ Done. Usage read from your account:');
+        console.log(`  session: ${d.five_hour ? d.five_hour.used_percentage + '%' : '—'}`);
+        console.log(`  week:    ${d.seven_day ? d.seven_day.used_percentage + '%' : '—'}`);
+        console.log(`  saved to ${DATA}`);
       } else {
-        console.log(`✗ Non riuscito: ${r.reason}`);
+        console.log(`✗ Failed: ${r.reason}`);
       }
     }
     process.exit(r.ok ? 0 : 1);

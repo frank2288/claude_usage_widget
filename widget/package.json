@@ -2,7 +2,7 @@
   "name": "claude-usage-widget",
   "version": "1.0.0",
   "private": true,
-  "description": "Widget non ufficiale per Windows: consumo di sessione (5 ore) e settimanale di Claude in sovraimpressione",
+  "description": "Unofficial Windows overlay showing your Claude plan usage: 5-hour session and weekly limits",
   "author": "frank2288",
   "repository": {
     "type": "git",

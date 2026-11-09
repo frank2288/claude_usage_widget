@@ -1,20 +1,20 @@
-// ---- Geometria ----
-const R = 38; // anello della modalità standard
+// ---- Geometry ----
+const R = 38; // ring of the "panel" style
 const LEN = 2 * Math.PI * R;
-const R_MINI = 40; // anello esterno della modalità compatta
+const R_MINI = 40; // outer ring of the "rings" style
 const LEN_MINI = 2 * Math.PI * R_MINI;
 
-// Anello blu interno (tempo al reset), diviso in segmenti.
+// Inner blue ring (time to reset), split into segments.
 const R_IN = 29;
-const SW_IN = 5; // spessore
-const GAP_DEG = 8; // spazio visibile tra due segmenti
-const CAP_DEG = ((SW_IN / 2) / R_IN) * (180 / Math.PI); // i bordi arrotondati sporgono di metà spessore
+const SW_IN = 5; // stroke width
+const GAP_DEG = 8; // visible gap between two segments
+const CAP_DEG = ((SW_IN / 2) / R_IN) * (180 / Math.PI); // round caps stick out by half the stroke
 const INSET_DEG = GAP_DEG / 2 + CAP_DEG;
 
-// La sessione dura 5 ore (5 segmenti da 1 ora); la settimana 7 giorni (7 segmenti da 1 giorno).
+// The session lasts 5 hours (5 one-hour segments); the week 7 days (7 one-day segments).
 const RINGS = [
-  { id: 'r-session', mini: 'm-session', bar: 'b-session', key: 'five_hour', label: 'Sessione', segments: 5, unitSec: 3600 },
-  { id: 'r-week', mini: 'm-week', bar: 'b-week', key: 'seven_day', label: 'Settimana', segments: 7, unitSec: 86400 },
+  { id: 'r-session', mini: 'm-session', bar: 'b-session', key: 'five_hour', label: 'Session', segments: 5, unitSec: 3600 },
+  { id: 'r-week', mini: 'm-week', bar: 'b-week', key: 'seven_day', label: 'Week', segments: 7, unitSec: 86400 },
 ];
 
 let state = null;
@@ -22,7 +22,7 @@ let state = null;
 const clamp = (n) => Math.max(0, Math.min(100, n));
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-// resets_at può essere epoch in secondi, in millisecondi o una stringa ISO.
+// resets_at can be epoch seconds, epoch milliseconds or an ISO string.
 function toMs(v) {
   if (v == null) return null;
   if (typeof v === 'number') return v > 1e12 ? v : v * 1000;
@@ -31,47 +31,49 @@ function toMs(v) {
 }
 
 function fmtRemaining(sec) {
-  if (sec <= 0) return 'ora';
+  if (sec <= 0) return 'now';
   const d = Math.floor(sec / 86400);
   const h = Math.floor((sec % 86400) / 3600);
   const m = Math.floor((sec % 3600) / 60);
-  if (d > 0) return `${d}g ${h}h`;
+  if (d > 0) return `${d}d ${h}h`;
   if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
   return `${Math.max(m, 1)}m`;
 }
 
-// Formato stretto per le barre: 2h12, 19h59, 3g3h, 40m
+// Narrow format for the bars style: 2h12, 19h59, 3d3h, 40m
 function fmtShort(sec) {
-  if (sec <= 0) return 'ora';
+  if (sec <= 0) return 'now';
   const d = Math.floor(sec / 86400);
   const h = Math.floor((sec % 86400) / 3600);
   const m = Math.floor((sec % 3600) / 60);
-  if (d > 0) return `${d}g${h}h`;
+  if (d > 0) return `${d}d${h}h`;
   if (h > 0) return `${h}h${String(m).padStart(2, '0')}`;
   return `${Math.max(m, 1)}m`;
 }
 
+// Clock time in the user's own locale format.
 function fmtClock(ms) {
-  return new Date(ms).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  return new Date(ms).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
 const levelClass = (pct) => (pct == null ? 'empty' : pct >= 90 ? 'danger' : pct >= 75 ? 'warn' : '');
 
-// Cosa mostrare per un anello, a partire dai dati ricevuti.
+// What to show for one window, based on the data received.
 function viewOf(r, now) {
   const w = state && state.ok ? state[r.key] : null;
-  const v = { pct: null, remainingSec: null, resetText: '—' };
+  const v = { pct: null, remainingSec: null, renewed: false, resetText: '—' };
   if (w && typeof w.used_percentage === 'number') {
     const resetMs = toMs(w.resets_at);
     if (resetMs && resetMs <= now) {
-      // la finestra è scaduta: il consumo riparte da zero
+      // the window has expired: usage starts again from zero
       v.pct = 0;
-      v.resetText = 'finestra rinnovata';
+      v.renewed = true;
+      v.resetText = 'window renewed';
     } else {
       v.pct = clamp(w.used_percentage);
       if (resetMs) {
         v.remainingSec = (resetMs - now) / 1000;
-        v.resetText = `reset tra ${fmtRemaining(v.remainingSec)}`;
+        v.resetText = `resets in ${fmtRemaining(v.remainingSec)}`;
       } else {
         v.resetText = '';
       }
@@ -80,7 +82,10 @@ function viewOf(r, now) {
   return v;
 }
 
-// ---- Anello blu segmentato ----
+const tooltipOf = (r, v) =>
+  v.pct == null ? `${r.label}: no data` : `${r.label}: ${Math.round(v.pct)}% used · ${v.resetText}`;
+
+// ---- Segmented blue ring ----
 function pointAt(deg) {
   const rad = (deg * Math.PI) / 180;
   return [48 + R_IN * Math.cos(rad), 48 + R_IN * Math.sin(rad)];
@@ -99,8 +104,8 @@ function pathEl(d) {
   return p;
 }
 
-// units = tempo rimasto espresso in segmenti (es. 2.4 = due segmenti pieni e il terzo al 40%).
-// I segmenti si accendono in senso orario a partire dall'alto e si spengono dall'ultimo.
+// units = remaining time expressed in segments (e.g. 2.4 = two full segments and the third at 40%).
+// Segments light up clockwise from the top and switch off from the last one.
 function drawSegments(el, n, units) {
   const gTrack = el.querySelector('.seg-track');
   const gLit = el.querySelector('.seg-lit');
@@ -116,7 +121,7 @@ function drawSegments(el, n, units) {
   }
 }
 
-// ---- Disegno ----
+// ---- Drawing ----
 function render() {
   const now = Date.now();
 
@@ -126,8 +131,9 @@ function render() {
     views[r.key] = { r, v };
     const p = v.pct == null ? 0 : v.pct;
     const shown = v.pct == null ? '—' : String(Math.round(v.pct));
+    const tip = tooltipOf(r, v);
 
-    // Modalità standard
+    // Panel style
     const el = document.getElementById(r.id);
     const bar = el.querySelector('.bar');
     bar.style.strokeDasharray = `${LEN}`;
@@ -137,27 +143,26 @@ function render() {
     el.querySelector('.reset').textContent = v.resetText;
     el.className = 'ring ' + levelClass(v.pct);
 
-    // Modalità compatta
+    // Rings style
     const m = document.getElementById(r.mini);
     const mbar = m.querySelector('.m-bar');
     mbar.style.strokeDasharray = `${LEN_MINI}`;
     mbar.style.strokeDashoffset = `${LEN_MINI * (1 - p / 100)}`;
     m.querySelector('.m-num').textContent = shown;
     m.querySelector('.m-sym').style.display = v.pct == null ? 'none' : '';
-    m.querySelector('.m-timer').textContent =
-      v.remainingSec != null ? fmtRemaining(v.remainingSec) : v.pct === 0 && v.resetText === 'finestra rinnovata' ? 'rinnovata' : '';
+    m.querySelector('.m-timer').textContent = v.remainingSec != null ? fmtRemaining(v.remainingSec) : v.renewed ? 'renewed' : '';
     m.className = 'mg ' + levelClass(v.pct);
-    m.title = v.pct == null ? `${r.label}: nessun dato` : `${r.label}: ${Math.round(v.pct)}% usato · ${v.resetText}`;
+    m.title = tip;
     const units = v.remainingSec == null ? null : Math.min(r.segments, v.remainingSec / r.unitSec);
     drawSegments(m, r.segments, units);
 
-    // Modalità barre
+    // Bars style
     const b = document.getElementById(r.bar);
     b.className = 'brow ' + (levelClass(v.pct) === 'empty' ? '' : levelClass(v.pct));
     b.querySelector('.bfill').style.width = `${p}%`;
     b.querySelector('.bpct').textContent = v.pct == null ? '—' : `${shown}%`;
-    b.querySelector('.btimer').textContent = v.remainingSec != null ? fmtShort(v.remainingSec) : v.pct === 0 && v.resetText === 'finestra rinnovata' ? 'nuova' : '';
-    b.title = m.title;
+    b.querySelector('.btimer').textContent = v.remainingSec != null ? fmtShort(v.remainingSec) : v.renewed ? 'new' : '';
+    b.title = tip;
     b.querySelectorAll('.bseg i').forEach((seg, k) => {
       const f = units == null ? 0 : Math.max(0, Math.min(1, units - k));
       seg.style.width = `${f * 100}%`;
@@ -168,8 +173,8 @@ function render() {
 
   const foot = document.getElementById('foot');
   if (!state) foot.textContent = '';
-  else if (!state.ok) foot.textContent = state.reason === 'nofile' ? 'In attesa dei dati…' : 'File dei dati non leggibile';
-  else foot.textContent = `aggiornato alle ${fmtClock(state.updated)}`;
+  else if (!state.ok) foot.textContent = state.reason === 'nofile' ? 'Waiting for data…' : 'Data file unreadable';
+  else foot.textContent = `updated at ${fmtClock(state.updated)}`;
 }
 
 let mode = { style: 'rings', compact: false, mini: false, tray: false, taskbarLight: false };
@@ -185,11 +190,11 @@ function applyMode(m) {
   render();
 }
 
-// ---- Icone per la barra di Windows ----
+// ---- Icons next to the clock (notification area) ----
 const LEVEL_COLORS = { '': '#d97757', warn: '#e9b44c', danger: '#ef5350', empty: 'rgba(160,160,170,0.5)' };
 
-// Anellino colorato con la percentuale al centro, disegnato a "size" pixel.
-// Nessun contorno sul numero: nero su barra chiara, bianco su barra scura.
+// Small coloured ring with the percentage in the middle, drawn at "size" pixels.
+// No outline on the number: black on a light taskbar, white on a dark one.
 function drawTrayIcon(size, pct, light) {
   const c = document.createElement('canvas');
   c.width = size;
@@ -227,18 +232,18 @@ function sendTrayIcons(views) {
     const { r, v } = views[key];
     payload[key] = {
       reps: { 1: drawTrayIcon(16, v.pct, mode.taskbarLight), 1.5: drawTrayIcon(24, v.pct, mode.taskbarLight), 2: drawTrayIcon(32, v.pct, mode.taskbarLight) },
-      tooltip: v.pct == null ? `${r.label}: nessun dato` : `${r.label}: ${Math.round(v.pct)}% usato · ${v.resetText}`,
+      tooltip: tooltipOf(r, v),
     };
   }
-  // invia solo se qualcosa è cambiato
+  // send only when something changed
   const sig = (mode.taskbarLight ? 'L' : 'D') + Object.keys(payload).map((k) => `${k}|${Math.round(views[k].v.pct ?? -1)}|${payload[k].tooltip}`).join(';');
   if (sig === lastTraySig) return;
   lastTraySig = sig;
   call('setTrayIcons', payload);
 }
 
-// Chiamata sicura: se una funzione manca (per esempio un preload.js vecchio),
-// il resto del widget continua a funzionare.
+// Safe call: if a function is missing (e.g. an outdated preload.js),
+// the rest of the widget keeps working.
 const W = window.widget || {};
 function call(name, ...args) {
   try {
@@ -248,7 +253,7 @@ function call(name, ...args) {
   }
 }
 
-// Mouse per primo: trascinamento, menu contestuale e doppio clic per cambiare modalità.
+// Mouse first: dragging, context menu and double-click to switch style.
 document.addEventListener('mousedown', (e) => {
   if (e.button === 0) call('dragStart');
 });
@@ -261,7 +266,7 @@ document.addEventListener('contextmenu', (e) => {
   call('menu');
 });
 
-// Dati e modalità
+// Data and mode
 call('onData', (d) => {
   state = d;
   render();
