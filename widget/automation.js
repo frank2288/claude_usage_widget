@@ -59,7 +59,18 @@ function buildRefreshVbs(nodePath, scriptPath) {
 
 const xmlEscape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function buildTaskXml(minutes, user, vbsPath) {
+// Local time as Task Scheduler wants it: 2026-11-10T11:20:00
+function localStamp(date) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}T${p(date.getHours())}:${p(date.getMinutes())}:${p(date.getSeconds())}`;
+}
+
+// Two triggers:
+//  - a time trigger that starts one minute after install and repeats forever:
+//    the refresh works right away, with no need to sign out or restart;
+//  - one extra run a minute after each sign-in, for fresh data at startup.
+// (A sign-in trigger with repetition alone would only start at the NEXT sign-in.)
+function buildTaskXml(minutes, user, vbsPath, startAt = new Date(Date.now() + 60 * 1000)) {
   const u = xmlEscape(user);
   return `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
@@ -67,11 +78,15 @@ function buildTaskXml(minutes, user, vbsPath) {
     <Description>Refreshes the Claude usage percentages for the desktop widget.</Description>
   </RegistrationInfo>
   <Triggers>
-    <LogonTrigger>
+    <TimeTrigger>
       <Repetition>
         <Interval>PT${minutes}M</Interval>
         <StopAtDurationEnd>false</StopAtDurationEnd>
       </Repetition>
+      <StartBoundary>${localStamp(startAt)}</StartBoundary>
+      <Enabled>true</Enabled>
+    </TimeTrigger>
+    <LogonTrigger>
       <Enabled>true</Enabled>
       <UserId>${u}</UserId>
       <Delay>PT1M</Delay>
