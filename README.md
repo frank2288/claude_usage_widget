@@ -30,7 +30,7 @@ Or as **icons next to the clock**:
 2. Extract the zip (right-click → *Extract All…*).
 3. Double-click **`INSTALL.cmd`**.
    If you see *"Windows protected your PC"*: **More info → Run anyway**.
-4. Follow the window. It does everything on its own:
+4. Follow the window. It first shows a short notice about what it installs and asks you to confirm; then it does everything on its own:
    - installs Node.js and Claude Code if they are missing
    - copies the widget to `%LOCALAPPDATA%\ClaudeUsageWidget`
    - opens your browser to sign in to your Claude account

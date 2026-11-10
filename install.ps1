@@ -33,6 +33,24 @@ if (-not (Test-Path (Join-Path $src 'main.js'))) {
     Fail "Cannot find the 'widget' folder next to the installer. Did you extract the whole zip before running it?"
 }
 
+# ---------------------------------------------------------------- Notice
+Write-Host ''
+Write-Host '  Before you continue:' -ForegroundColor Yellow
+Write-Host '  - Unofficial tool, not affiliated with Anthropic.'
+Write-Host '  - Installs Node.js and Claude Code if missing, copies the widget to'
+Write-Host "    $dest, and adds autostart plus a scheduled task."
+Write-Host '  - Every 15 minutes it sends a tiny request to Claude with your account'
+Write-Host '    to read your usage: it counts (a little) towards your plan limits.'
+Write-Host '  - Nothing is sent anywhere else. Remove everything with UNINSTALL.cmd.'
+Write-Host ''
+$go = Read-Host '  Continue? (Y/N)'
+if ($go -notmatch '^[yYsS]') {
+    Write-Host ''
+    Write-Host '  Cancelled. Nothing was installed.'
+    Start-Sleep -Seconds 2
+    exit 0
+}
+
 # ---------------------------------------------------------------- 1. Node.js
 Step 1 'Node.js'
 Refresh-Path
